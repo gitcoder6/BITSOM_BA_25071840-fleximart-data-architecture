@@ -16,14 +16,28 @@
 
 import subprocess
 import sys
-import logging
+import os
 
-# Create a logger object
-logger = logging.getLogger()
+
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Path to requirements.txt
+requirements_path = os.path.join(script_dir, "requirements.txt")
+
+# Path to data folder
+data_folder = os.path.join(script_dir, "..", "data")
+
+# Path for log file and data quality report
+log_file_path = os.path.join(script_dir, "etl_pipeline.log")
+data_quality_report_path = os.path.join(script_dir, "data_quality_report.txt")
+
 
 def install_requirements():
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-    logger.info("Installed required packages from requirements.txt")
+    
+    # Install requirements
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_path])
+
 
 install_requirements()
 
@@ -33,6 +47,7 @@ import pandas as pd
 import numpy as np
 import phonenumbers
 import mysql.connector
+import logging
 
 from dotenv import load_dotenv
 from datetime import datetime
@@ -43,11 +58,14 @@ pd.options.mode.chained_assignment = None  # default='warn'
 # -------------------- SETUP LOGGER --------------------
 # Set up logging to record ETL process events and errors for debugging and auditing
 logging.basicConfig(
-    filename='etl_pipeline.log',  # Log file name
+    filename=log_file_path,  # Log file name
     level=logging.INFO,           # Log level: INFO records all major events
     format='%(asctime)s %(levelname)s:%(message)s'  # Log format with timestamp
 )
 
+
+# Create a logger object
+logger = logging.getLogger()
 
 # Load environment variables from .env file in the root directory
 load_dotenv()
@@ -303,16 +321,13 @@ def validate_df(df, expected_columns, df_name):
     try:
         if df is None:
             logger.error(f"{df_name} is None.")
-            print(f"{df_name} is None.")
             return False
         if df.empty:
             logger.error(f"{df_name} is empty.")
-            print(f"{df_name} is empty.")
             return False
         missing_cols = [col for col in expected_columns if col not in df.columns]
         if missing_cols:
             logger.error(f"{df_name} is missing columns: {missing_cols}")
-            print(f"{df_name} is missing columns: {missing_cols}")
             return False
         logger.info(f"{df_name} validated successfully.")
         return True
@@ -505,6 +520,25 @@ def build_quality_report(df, file_name):
         "Records Loaded Successfully": records_loaded_successfully
     }
 
+# Function to get CSV file path
+def get_csv_path(filename):
+    """Return full path of a CSV file from the data folder."""
+    return os.path.join(data_folder, filename)
+
+# Loading the CSV file in DataFrame with error handling
+def load_csv(file_path):
+    """Load a CSV file into a pandas DataFrame with error handling."""
+    try:
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return pd.DataFrame()
+        df = pd.read_csv(file_path)
+        logger.info(f"Loaded file successfully: {os.path.basename(file_path)} (Rows: {len(df)}, Columns: {len(df.columns)})")
+        return df
+    except Exception as e:
+        logger.error(f"Error loading file {file_path}: {e}")
+        return pd.DataFrame()
+        
 # 
 # ## 3. Extract Raw Data
 # 
@@ -517,6 +551,7 @@ def build_quality_report(df, file_name):
 
 # -------------------- Extract Logic Function --------------------
 logger.info("------------------------ Date Extract Logic from CSV File -----------------")
+# Function to extract raw data from CSV files
 def extract_raw_data():
     """
      Read raw CSV files for customers, products, and sales.
@@ -530,36 +565,17 @@ def extract_raw_data():
         tuple: (customers, products, sales, customers_raw, products_raw, sales_raw)
                Each as a DataFrame (empty if load fails).
    """
-    try:
-        customers_raw = pd.read_csv('../data/customers_raw.csv')
-        customers = customers_raw.copy()
-        logger.info(f"Loaded customers_raw.csv with shape {customers_raw.shape}")
-    except Exception as e:
-        logger.error(f"Error loading customers_raw.csv: {e}")
-        customers_raw = pd.DataFrame()
-        customers = pd.DataFrame()
-        print(f"Error loading customers_raw.csv: {e}")
+    customers_csv_path = get_csv_path("customers_raw.csv")
+    products_csv_path = get_csv_path("products_raw.csv")
+    sales_csv_path = get_csv_path("sales_raw.csv")
 
-    try:
-        products_raw = pd.read_csv('../data/products_raw.csv')
-        products = products_raw.copy()
-        logger.info(f"Loaded products_raw.csv with shape {products_raw.shape}")
-    except Exception as e:
-        logger.error(f"Error loading products_raw.csv: {e}")
-        products_raw = pd.DataFrame()
-        products = pd.DataFrame()
-        print(f"Error loading products_raw.csv: {e}")
-
-    try:
-        sales_raw = pd.read_csv('../data/sales_raw.csv')
-        sales = sales_raw.copy()
-        logger.info(f"Loaded sales_raw.csv with shape {sales_raw.shape}")
-    except Exception as e:
-        logger.error(f"Error loading sales_raw.csv: {e}")
-        sales_raw = pd.DataFrame()
-        sales = pd.DataFrame()
-        print(f"Error loading sales_raw.csv: {e}")
-
+    customers_raw = load_csv(customers_csv_path)
+    customers = customers_raw.copy()
+    products_raw = load_csv(products_csv_path)
+    products = products_raw.copy()
+    sales_raw = load_csv(sales_csv_path)
+    sales = sales_raw.copy()
+   
     return customers, products, sales, customers_raw, products_raw, sales_raw
 
 # ## 4. Transform or Clean Data
@@ -640,7 +656,6 @@ def clean_customers(customers_df):
         return customers
     except Exception as e:
         logger.error(f"Error cleaning customers data: {e}")
-        print(f"Error cleaning customers data: {e}")
 
 # Clean customers data: remove duplicates, handle missing emails, standardize phone/city/date
 #customers_clean = clean_customers(customers)
@@ -710,7 +725,6 @@ def clean_products(products_df):
         return products
     except Exception as e:
         logger.error(f"Error cleaning products data: {e}")
-        print(f"Error cleaning products data: {e}")
 
 # Clean products data: remove duplicates, handle missing prices/stock, standardize category/name
 #products_clean = clean_products(products)
@@ -765,7 +779,6 @@ def clean_sales(sales_df):
         return sales_df
     except Exception as e:
         logger.error(f"Error cleaning sales data: {e}")
-        print(f"❌ Error cleaning sales data: {e}")
         return pd.DataFrame()
 
 # Clean sales data: remove duplicates, handle missing IDs, standardize date
@@ -821,7 +834,7 @@ def split_orders(sales_clean):
         logger.info("Renamed columns in orders DataFrame to match SQL structure.")
 
         # Clean existing CSV before saving Orders DataFrame:
-        csv_path = '../data/orders.csv'
+        csv_path = data_folder + '/orders.csv'
         reset_csv_file(csv_path)
 
         # Save to CSV
@@ -881,7 +894,7 @@ def split_sales_to_order_items(sales_clean):
         logger.info("Renamed columns in order_items DataFrame to match SQL structure.")
 
         # Before saving your DataFrame:
-        csv_path = '../data/order_items.csv'
+        csv_path = data_folder + '/order_items.csv'
         reset_csv_file(csv_path)
 
         # Save to CSV
@@ -1223,7 +1236,7 @@ def write_data_quality_report(customers, products, sales_raw):
     report.append(build_quality_report(products, "products_raw.csv"))
     report.append(build_quality_report(sales_raw, "sales_raw.csv"))
 
-    with open("data_quality_report.txt", "w") as f:
+    with open(data_quality_report_path, "w") as f:
         f.write("Data Quality Report (ETL Summary):\n\n")
         for r in report:
             f.write(f"File: {r['File']}\n")
