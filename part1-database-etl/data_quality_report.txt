@@ -1,0 +1,20 @@
+Data Quality Report (ETL Summary):
+
+File: customers_raw.csv
+- Records Processed: 26
+- Duplicates Removed: 1
+- Missing Values Handled: 5
+- Records Loaded Successfully: 25
+
+File: products_raw.csv
+- Records Processed: 20
+- Duplicates Removed: 0
+- Missing Values Handled: 4
+- Records Loaded Successfully: 20
+
+File: sales_raw.csv
+- Records Processed: 41
+- Duplicates Removed: 1
+- Missing Values Handled: 5
+- Records Loaded Successfully: 35
+
