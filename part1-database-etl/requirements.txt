@@ -1,0 +1,17 @@
+# Data processing libraries
+pandas 
+numpy 
+# Environment variable management
+python-dotenv
+# Phone number parsing and formatting 
+phonenumbers 
+# Date and time manipulation
+datetime 
+# Logging library
+logging
+# MySQL connector
+mysql-connector-python
+# Json handling
+json5
+# MongoDB connector
+pymongo
