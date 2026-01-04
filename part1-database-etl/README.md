@@ -84,8 +84,23 @@ Includes:
 3. **Configure Database Credentials**  
    Create a `.env` file in your project root with the following variables (update with your actual MySQL credentials):
 
-4. **Python program execution**  
-   python part1-database-etl/etl_pipeline.py
+4. **How to Run**  
+   1. Ensure you have Python 3.x installed.
+   2. Place `etl_pipeline.py`, `requirements.txt`, and the three CSV files (`customers_raw.csv`, `products_raw.csv`, `sales_raw.csv`) in your working directory. Make sure the CSV files are in a folder named `data/` (or update the script paths accordingly).
+   3. Create a `.env` file in your project root with your database credentials:
+    ```
+    DB_HOST=your_host
+    DB_USER=your_username
+    DB_PASS=your_password
+    DB_NAME=fleximart
+    ```
+   4. Run the ETL pipeline using the following command:
+    ```bash
+    python etl_pipeline.py
+    ```
+5. After execution, check for:
+   - Cleaned data loaded into your database
+   - A summary report generated as `data_quality_report.txt`
 
 ---
 ## Key Learnings
