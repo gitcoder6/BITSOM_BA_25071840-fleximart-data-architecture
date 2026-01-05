@@ -10,18 +10,29 @@ This script demonstrates MongoDB operations:
 5. Aggregate average price by category
 """
 
-
 import subprocess
 import sys
+import os
 
-# Function to install requirements from requirements.txt
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Path to requirements.txt
+requirements_path = os.path.join(script_dir, "../part1-database-etl/requirements.txt")
+
+# Path for log file and data quality report
+log_file_path = os.path.join(script_dir, "mongodb_operations.log")
+product_catalog_json_file_path = os.path.join(script_dir, "products_catalog.json")
+
+# Function to install required packages from requirements.txt
 def install_requirements():
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "../part1-database-etl/requirements.txt"])
+    
+    # Install requirements
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_path])
 
-# Install requirements
+# Install required packages
 install_requirements()
 
-import os
 import json
 import logging
 from datetime import datetime, timezone
@@ -29,13 +40,11 @@ from pymongo import MongoClient, errors
 from dotenv import load_dotenv
 from typing import List, Dict, Tuple
 
-# -------------------- CONFIGURATION --------------------
-LOG_FILE = "mongodb_operations.log"
 
 # -------------------- LOGGER SETUP --------------------
 # Set up logging to record mongodb operations events and errors for debugging and auditing
 logging.basicConfig(
-    filename=LOG_FILE,  
+    filename=log_file_path,  
     level=logging.INFO,           
     format='%(asctime)s %(levelname)s:%(message)s'  
 )
@@ -76,7 +85,7 @@ def connect_to_mongodb() -> Tuple[MongoClient, any]:
     try:     
         # Test connection
         client.admin.command('ping')
-        logger.info(f"Connected to MongoDB successfully. {client.server_info()}")
+        logger.info(f"Connected to MongoDB successfully.")
         return client, collection
     except errors.ServerSelectionTimeoutError as err:
         logger.error(f"Could not connect to MongoDB: {err}")
@@ -306,7 +315,7 @@ def main():
         # Operation 1: Import the provided JSON file into collection 'products' in MongoDB
         logger.info("\n--- Loading data into MongoDB ---")
         # Load data and log result
-        load_data("products_catalog.json", collection)
+        load_data(product_catalog_json_file_path, collection)
         logger.info(f"Data loaded into MongoDB successfully. {collection.count_documents({})} documents in collection.")
 
         # Operation 2: Basic Query 
